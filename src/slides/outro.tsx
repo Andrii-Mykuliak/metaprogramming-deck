@@ -9,12 +9,13 @@ import { useAmbient } from "../deck/clock";
    collapses back into the root in a flash and grows again, slowly turning. */
 const CX = 960;
 const CY = 715;
-const DEPTH = 6;
-const ARMS = 6;
-const CYCLE = 9;
-const LEN0 = 115;
+const DEPTH = 4;
+const ARMS = 5;
+const CYCLE = 12;
+const LEN0 = 120;
 const SHRINK = 0.74;
 const SPREAD = 0.52;
+const SPARKS = false;
 
 type Seg = { x1: number; y1: number; x2: number; y2: number; d: number; leaf: boolean; id: number };
 const SEGS: Seg[] = (() => {
@@ -43,9 +44,9 @@ const GrowingTree: React.FC<{ p: number }> = ({ p }) => {
   const u = (t % CYCLE) / CYCLE;
   const grow = ease(u / 0.5) * DEPTH;
   const collapse = ease((u - 0.82) / 0.13);
-  const flash = Math.max(0, 1 - Math.abs(u - 0.96) / 0.04);
-  const rot = t * 6;
-  const scale = (1 - collapse * 0.97) * (1 + 0.03 * Math.sin(t * 2));
+  const flash = 0.35 * Math.max(0, 1 - Math.abs(u - 0.96) / 0.04);
+  const rot = t * 2;
+  const scale = 1 - collapse * 0.97;
   const full = clamp01((u - 0.5) / 0.05) * (1 - collapse);
   const lines: React.ReactNode[] = [];
   const nodes: React.ReactNode[] = [];
@@ -55,12 +56,12 @@ const GrowingTree: React.FC<{ p: number }> = ({ p }) => {
     if (v <= 0.01) continue;
     const x2 = sg.x1 + (sg.x2 - sg.x1) * v;
     const y2 = sg.y1 + (sg.y2 - sg.y1) * v;
-    const col = MARBLES[(sg.d + Math.floor(t * 0.6)) % MARBLES.length];
-    lines.push(<line key={`l${sg.id}`} x1={sg.x1} y1={sg.y1} x2={x2} y2={y2} stroke={col} strokeWidth={Math.max(1.2, 6 - sg.d)} strokeLinecap="round" opacity={0.55 + 0.45 * v} />);
+    const col = sg.leaf ? C.amber : C.teal;
+    lines.push(<line key={`l${sg.id}`} x1={sg.x1} y1={sg.y1} x2={x2} y2={y2} stroke={col} strokeWidth={Math.max(1, 3.2 - sg.d * 0.45)} strokeLinecap="round" opacity={0.45 + 0.35 * v} />);
     if (v > 0.98) {
-      const tw = sg.leaf ? 0.5 + 0.5 * Math.sin(t * 5 + sg.id) : 1;
-      nodes.push(<circle key={`n${sg.id}`} cx={sg.x2} cy={sg.y2} r={(sg.leaf ? 7 : 11 - sg.d * 1.4) * (0.7 + 0.3 * tw)} fill={col} />);
-      if (sg.leaf && full > 0) {
+      const tw = sg.leaf ? 0.6 + 0.4 * Math.sin(t * 1.5 + sg.id) : 1;
+      nodes.push(<circle key={`n${sg.id}`} cx={sg.x2} cy={sg.y2} r={(sg.leaf ? 3.5 : 6 - sg.d * 0.8) * (0.8 + 0.2 * tw)} fill={col} />);
+      if (SPARKS && sg.leaf && full > 0) {
         const life = ((t * 1.3 + rnd(sg.id)) % 1);
         const ang = Math.atan2(sg.y2 - sg.y1, sg.x2 - sg.x1) + (rnd(sg.id + 9) - 0.5) * 1.2;
         const dist = 18 + life * 70;
@@ -74,15 +75,15 @@ const GrowingTree: React.FC<{ p: number }> = ({ p }) => {
     <svg width={1920} height={1080} style={{ position: "absolute", left: 0, top: 0, opacity: clamp01(p) }}>
       <defs>
         <filter id="tglow" x="-50%" y="-50%" width="200%" height="200%">
-          <feGaussianBlur stdDeviation="6" result="b" />
+          <feGaussianBlur stdDeviation="2" result="b" />
           <feMerge>
             <feMergeNode in="b" />
             <feMergeNode in="SourceGraphic" />
           </feMerge>
         </filter>
         <radialGradient id="rootGrad">
-          <stop offset="0" stopColor="#ffffff" />
-          <stop offset="0.4" stopColor={C.amber} />
+          <stop offset="0" stopColor={C.amber} />
+          <stop offset="0.6" stopColor={C.amber} stopOpacity="0.5" />
           <stop offset="1" stopColor={C.amber} stopOpacity="0" />
         </radialGradient>
         <radialGradient id="thaze">
@@ -90,14 +91,13 @@ const GrowingTree: React.FC<{ p: number }> = ({ p }) => {
           <stop offset="1" stopColor={C.teal} stopOpacity="0" />
         </radialGradient>
       </defs>
-      <ellipse cx={CX} cy={CY} rx={820} ry={600} fill="url(#thaze)" />
       <g transform={`translate(${CX} ${CY}) rotate(${rot}) scale(${scale})`}>
         <g filter="url(#tglow)">{lines}</g>
         <g filter="url(#tglow)">{nodes}</g>
         <g filter="url(#tglow)">{sparks}</g>
       </g>
-      <circle cx={CX} cy={CY} r={40 + 360 * flash} fill="url(#rootGrad)" opacity={0.25 + 0.75 * flash} />
-      <circle cx={CX} cy={CY} r={26 + 6 * Math.sin(t * 4)} fill="url(#rootGrad)" filter="url(#tglow)" />
+      <circle cx={CX} cy={CY} r={20 + 120 * flash} fill="url(#rootGrad)" opacity={0.3 + flash} />
+      <circle cx={CX} cy={CY} r={12 + 2 * Math.sin(t * 2)} fill="url(#rootGrad)" />
     </svg>
   );
 };
@@ -106,7 +106,7 @@ const Outro: React.FC = () => {
   const { s } = useSteps();
   const words = ["Дякую", "за", "увагу!"];
   return (
-    <AbsoluteFill style={{ background: `radial-gradient(ellipse at 50% 60%, #121c38 0%, #070b16 70%)`, overflow: "hidden" }}>
+    <AbsoluteFill style={{ background: `radial-gradient(ellipse at 50% 60%, #111a30 0%, #0a0f1d 75%)`, overflow: "hidden", userSelect: "none" }}>
       <GrowingTree p={s(0, 4)} />
       <div style={{ position: "absolute", left: 0, right: 0, top: 90, textAlign: "center", fontFamily: F.head, fontWeight: 700, fontSize: 142, color: C.text, textShadow: "0 6px 40px rgba(0,0,0,0.8)" }}>
         {words.map((w, i) => {
