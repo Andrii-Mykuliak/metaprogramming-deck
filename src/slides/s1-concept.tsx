@@ -65,7 +65,7 @@ const When: React.FC = () => {
         return (
           <React.Fragment key={w.t}>
             <div style={{ position: "absolute", left: w.x - 22, top: 458, width: 44, height: 44, borderRadius: 22, background: w.c, boxShadow: `0 0 ${30 * pulse(t(1, d), 6, 22)}px ${w.c}`, opacity: clamp01(p), transform: `scale(${p})` }} />
-            <div style={{ position: "absolute", left: w.x - 260, width: 520, top: 380, textAlign: "center", fontFamily: F.head, fontSize: 34, fontWeight: 500, color: w.c, opacity: clamp01(p) }}>{w.t}</div>
+            <div style={{ position: "absolute", left: w.x - 260, width: 520, top: 380, textAlign: "center", fontFamily: F.head, fontSize: 40, fontWeight: 600, color: w.c, opacity: clamp01(p) }}>{w.t}</div>
             <Panel x={w.x - 260} y={540} w={520} h={170} color={w.c} p={s(1, d + 6)}>
               <div style={{ fontFamily: F.body, fontWeight: 700, fontSize: 30, lineHeight: 1.36, color: C.text }}>{w.d}</div>
             </Panel>
@@ -111,7 +111,7 @@ const Kinds: React.FC = () => {
         return (
           <React.Fragment key={k.m}>
             <Panel x={COLS[0]} y={y} w={W[0]} h={146} color={k.c} p={p} pad="0 26px">
-              <div style={{ height: 146, display: "flex", alignItems: "center", fontFamily: F.head, fontWeight: 500, fontSize: 30, color: k.c, lineHeight: 1.25 }}>{k.m}</div>
+              <div style={{ height: 146, display: "flex", alignItems: "center", fontFamily: F.head, fontWeight: 600, fontSize: 35, color: k.c, lineHeight: 1.25 }}>{k.m}</div>
             </Panel>
             <div style={{ position: "absolute", left: COLS[1], top: y, width: W[1], height: 146, display: "flex", alignItems: "center", fontFamily: F.body, fontWeight: 700, fontSize: 31, lineHeight: 1.36, color: C.text, opacity: clamp01(s(i + 1, 8)) }}>{k.what}</div>
             <div style={{ position: "absolute", left: COLS[2], top: y, width: W[2], height: 146, display: "flex", alignItems: "center", fontFamily: F.body, fontWeight: 700, fontSize: 31, lineHeight: 1.36, color: C.dim, opacity: clamp01(s(i + 1, 14)) }}>{k.when}</div>

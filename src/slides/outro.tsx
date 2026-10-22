@@ -1,51 +1,103 @@
 import React from "react";
+import { AbsoluteFill } from "remotion";
 import { C, F, MARBLES } from "../deck/theme";
 import { POP, SlideDef, useSteps } from "../deck/steps";
-import { clamp01, Slide } from "../deck/ui";
+import { clamp01, rnd } from "../deck/ui";
 import { useAmbient } from "../deck/clock";
 
-/* A syntax tree that keeps growing level by level, then folds back into its root. */
-const DEPTH = 5;
-const CYCLE = 10;
-const ROOT = { x: 960, y: 520 };
-const LEVEL_H = 108;
+/* A program that writes programs: a radial syntax tree grows from the centre, sparks at its leaves,
+   collapses back into the root in a flash and grows again, slowly turning. */
+const CX = 960;
+const CY = 715;
+const DEPTH = 6;
+const ARMS = 6;
+const CYCLE = 9;
+const LEN0 = 115;
+const SHRINK = 0.74;
+const SPREAD = 0.52;
 
-type N = { x: number; y: number; d: number; px: number; py: number; k: number };
-const NODES: N[] = (() => {
-  const out: N[] = [];
-  const walk = (x: number, y: number, d: number, span: number, px: number, py: number, k: number) => {
-    out.push({ x, y, d, px, py, k });
+type Seg = { x1: number; y1: number; x2: number; y2: number; d: number; leaf: boolean; id: number };
+const SEGS: Seg[] = (() => {
+  const out: Seg[] = [];
+  let id = 0;
+  const grow = (x: number, y: number, a: number, len: number, d: number) => {
+    const x2 = x + len * Math.cos(a);
+    const y2 = y + len * Math.sin(a);
+    out.push({ x1: x, y1: y, x2, y2, d, leaf: d === DEPTH - 1, id: id++ });
     if (d === DEPTH - 1) return;
-    walk(x - span / 2, y + LEVEL_H, d + 1, span / 2, x, y, k * 2);
-    walk(x + span / 2, y + LEVEL_H, d + 1, span / 2, x, y, k * 2 + 1);
+    const spread = SPREAD * (1 - d * 0.06);
+    grow(x2, y2, a - spread, len * SHRINK, d + 1);
+    grow(x2, y2, a + spread, len * SHRINK, d + 1);
   };
-  walk(ROOT.x, ROOT.y, 0, 1500, ROOT.x, ROOT.y, 0);
+  for (let k = 0; k < ARMS; k++) grow(0, 0, (k / ARMS) * Math.PI * 2 - Math.PI / 2, LEN0, 0);
   return out;
 })();
+
+const ease = (v: number) => {
+  const x = clamp01(v);
+  return 1 - Math.pow(1 - x, 3);
+};
 
 const GrowingTree: React.FC<{ p: number }> = ({ p }) => {
   const t = useAmbient();
   const u = (t % CYCLE) / CYCLE;
-  const grow = clamp01(u / 0.55) * DEPTH;
-  const fold = clamp01((u - 0.7) / 0.25) * DEPTH;
+  const grow = ease(u / 0.5) * DEPTH;
+  const collapse = ease((u - 0.82) / 0.13);
+  const flash = Math.max(0, 1 - Math.abs(u - 0.96) / 0.04);
+  const rot = t * 6;
+  const scale = (1 - collapse * 0.97) * (1 + 0.03 * Math.sin(t * 2));
+  const full = clamp01((u - 0.5) / 0.05) * (1 - collapse);
+  const lines: React.ReactNode[] = [];
+  const nodes: React.ReactNode[] = [];
+  const sparks: React.ReactNode[] = [];
+  for (const sg of SEGS) {
+    const v = clamp01(grow - sg.d);
+    if (v <= 0.01) continue;
+    const x2 = sg.x1 + (sg.x2 - sg.x1) * v;
+    const y2 = sg.y1 + (sg.y2 - sg.y1) * v;
+    const col = MARBLES[(sg.d + Math.floor(t * 0.6)) % MARBLES.length];
+    lines.push(<line key={`l${sg.id}`} x1={sg.x1} y1={sg.y1} x2={x2} y2={y2} stroke={col} strokeWidth={Math.max(1.2, 6 - sg.d)} strokeLinecap="round" opacity={0.55 + 0.45 * v} />);
+    if (v > 0.98) {
+      const tw = sg.leaf ? 0.5 + 0.5 * Math.sin(t * 5 + sg.id) : 1;
+      nodes.push(<circle key={`n${sg.id}`} cx={sg.x2} cy={sg.y2} r={(sg.leaf ? 7 : 11 - sg.d * 1.4) * (0.7 + 0.3 * tw)} fill={col} />);
+      if (sg.leaf && full > 0) {
+        const life = ((t * 1.3 + rnd(sg.id)) % 1);
+        const ang = Math.atan2(sg.y2 - sg.y1, sg.x2 - sg.x1) + (rnd(sg.id + 9) - 0.5) * 1.2;
+        const dist = 18 + life * 70;
+        sparks.push(
+          <circle key={`s${sg.id}`} cx={sg.x2 + Math.cos(ang) * dist} cy={sg.y2 + Math.sin(ang) * dist} r={3.5 * (1 - life)} fill={MARBLES[sg.id % MARBLES.length]} opacity={full * (1 - life)} />,
+        );
+      }
+    }
+  }
   return (
     <svg width={1920} height={1080} style={{ position: "absolute", left: 0, top: 0, opacity: clamp01(p) }}>
-      {NODES.map((n, i) => {
-        const shown = clamp01(grow - n.d);
-        const gone = clamp01(fold - (DEPTH - 1 - n.d));
-        const v = shown * (1 - gone);
-        if (v <= 0.01) return null;
-        const x = n.px + (n.x - n.px) * v;
-        const y = n.py + (n.y - n.py) * v;
-        const c = MARBLES[n.d % MARBLES.length];
-        const r = 18 - n.d * 2.4;
-        return (
-          <g key={i} opacity={v}>
-            {n.d > 0 && <line x1={n.px} y1={n.py} x2={x} y2={y} stroke={C.line} strokeWidth={3} />}
-            <circle cx={x} cy={y} r={r} fill={c} />
-          </g>
-        );
-      })}
+      <defs>
+        <filter id="tglow" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="6" result="b" />
+          <feMerge>
+            <feMergeNode in="b" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+        <radialGradient id="rootGrad">
+          <stop offset="0" stopColor="#ffffff" />
+          <stop offset="0.4" stopColor={C.amber} />
+          <stop offset="1" stopColor={C.amber} stopOpacity="0" />
+        </radialGradient>
+        <radialGradient id="thaze">
+          <stop offset="0" stopColor={C.teal} stopOpacity="0.28" />
+          <stop offset="1" stopColor={C.teal} stopOpacity="0" />
+        </radialGradient>
+      </defs>
+      <ellipse cx={CX} cy={CY} rx={820} ry={600} fill="url(#thaze)" />
+      <g transform={`translate(${CX} ${CY}) rotate(${rot}) scale(${scale})`}>
+        <g filter="url(#tglow)">{lines}</g>
+        <g filter="url(#tglow)">{nodes}</g>
+        <g filter="url(#tglow)">{sparks}</g>
+      </g>
+      <circle cx={CX} cy={CY} r={40 + 360 * flash} fill="url(#rootGrad)" opacity={0.25 + 0.75 * flash} />
+      <circle cx={CX} cy={CY} r={26 + 6 * Math.sin(t * 4)} fill="url(#rootGrad)" filter="url(#tglow)" />
     </svg>
   );
 };
@@ -54,9 +106,9 @@ const Outro: React.FC = () => {
   const { s } = useSteps();
   const words = ["Дякую", "за", "увагу!"];
   return (
-    <Slide lanes={false}>
-      <GrowingTree p={s(0, 10)} />
-      <div style={{ position: "absolute", left: 0, right: 0, top: 200, textAlign: "center", fontFamily: F.head, fontWeight: 700, fontSize: 120, letterSpacing: -2, color: C.text }}>
+    <AbsoluteFill style={{ background: `radial-gradient(ellipse at 50% 60%, #121c38 0%, #070b16 70%)`, overflow: "hidden" }}>
+      <GrowingTree p={s(0, 4)} />
+      <div style={{ position: "absolute", left: 0, right: 0, top: 90, textAlign: "center", fontFamily: F.head, fontWeight: 700, fontSize: 142, color: C.text, textShadow: "0 6px 40px rgba(0,0,0,0.8)" }}>
         {words.map((w, i) => {
           const p = s(0, 6 + i * 6, POP);
           return (
@@ -66,11 +118,11 @@ const Outro: React.FC = () => {
           );
         })}
       </div>
-      <div style={{ position: "absolute", left: 0, right: 0, top: 370, textAlign: "center", fontFamily: F.body, fontWeight: 700, fontSize: 36, color: C.dim, opacity: clamp01(s(0, 30)) }}>
+      <div style={{ position: "absolute", left: 0, right: 0, top: 262, textAlign: "center", fontFamily: F.head, fontStyle: "italic", fontWeight: 500, fontSize: 44, color: C.dim, opacity: clamp01(s(0, 30)), textShadow: "0 4px 24px rgba(0,0,0,0.8)" }}>
         Питання?
       </div>
       <div style={{ position: "absolute", right: 96, bottom: 52, fontFamily: F.mono, fontSize: 22, fontWeight: 600, color: C.faint, opacity: clamp01(s(0, 40)) }}>made with Claude Opus 5.5</div>
-    </Slide>
+    </AbsoluteFill>
   );
 };
 

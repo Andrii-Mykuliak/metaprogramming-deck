@@ -96,10 +96,10 @@ const TitleSlide: React.FC = () => {
   const { s } = useSteps();
   return (
     <Slide>
-      <At x={96} y={150} step={0} delay={4} size={34} weight={500} color={C.teal} font={F.head} style={{ letterSpacing: 6 }}>
+      <At x={96} y={150} step={0} delay={4} size={40} weight={600} color={C.teal} font={F.head} style={{ letterSpacing: 6 }}>
         ЛЕКЦІЯ 13
       </At>
-      <At x={90} y={232} step={0} delay={10} size={112} weight={700} font={F.head} style={{ letterSpacing: -2, lineHeight: 1.05 }}>
+      <At x={90} y={232} step={0} delay={10} size={132} weight={700} font={F.head} style={{ letterSpacing: -0.5, lineHeight: 1.05 }}>
         Метапрограмування
       </At>
       <At x={96} y={386} step={0} delay={22} size={38} weight={700} color={C.dim}>
@@ -182,7 +182,7 @@ const QuoteSlide: React.FC = () => {
     });
   return (
     <Slide>
-      <div style={{ position: "absolute", left: 120, top: 150, width: 1680, fontFamily: F.head, fontSize: 52, fontWeight: 500, lineHeight: 1.3, color: C.text }}>
+      <div style={{ position: "absolute", left: 120, top: 150, width: 1680, fontFamily: F.head, fontSize: 61, fontWeight: 600, lineHeight: 1.3, color: C.text }}>
         {words(LINE1, 4, [])}
         <br />
         {words(LINE2, 40, ["vocabulary."])}
